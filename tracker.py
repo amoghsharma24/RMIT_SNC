@@ -12,7 +12,7 @@ class Node3Tracker(Node):
     def __init__(self):
         super().__init__('path_tracker_node')
         
-        # initialising the tf2 buffer and listener for capturing robot location
+        # initialising the tf2 buffer and listener for capturing the robot location
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
         
@@ -26,17 +26,19 @@ class Node3Tracker(Node):
         self.return_path = Path()
         self.return_path.header.frame_id = 'map'
 
+        # setting up storage for retracing the path waypoints in reverse
         self.history = [] 
         self.last_saved_pose = None
         self.is_returning = False
 
+        # initialising the action client for navigating through the saved waypoints
         self._nav_client = ActionClient(self, NavigateToPose, '/navigate_to_pose')
 
-        # subscribing to triggers for manual contingencies
+        # subscribing to trigger topics for contingencies
         self.trigger_sub = self.create_subscription(Empty, '/trigger_home', self.go_home_callback, 10)
         self.teleop_sub = self.create_subscription(Empty, '/trigger_teleop', self.teleop_contingency_callback, 10)
 
-        # starting timer for position tracking and point density management
+        # starting timer for position tracking
         self.timer = self.create_timer(0.5, self.track_position)
         self.publish_status("status: initialised - waiting for start")
 
@@ -47,9 +49,13 @@ class Node3Tracker(Node):
         self.status_pub.publish(msg)
         self.get_logger().info(info_string)
 
+    def get_distance(self, p1, p2):
+        # calculating the straight line distance between two coordinates
+        return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+
     def track_position(self):
         try:
-            # looking up the latest transform between map and robot base link
+            # looking up the latest transform between the map and the robot base
             now = rclpy.time.Time()
             t = self.tf_buffer.lookup_transform('map', 'base_link', now)
             curr_x = t.transform.translation.x
@@ -61,6 +67,9 @@ class Node3Tracker(Node):
             pose.pose.position.x = curr_x
             pose.pose.position.y = curr_y
 
+            # logging tracking data continuously for both exploration and return
+            self.get_logger().info(f'tracking at: x={curr_x:.2f}, y={curr_y:.2f}')
+
             if not self.is_returning:
                 # recording breadcrumbs every 0.3 metres for high fidelity retracing
                 if self.last_saved_pose is None or self.get_distance((curr_x, curr_y), self.last_saved_pose) > 0.3:
@@ -68,9 +77,8 @@ class Node3Tracker(Node):
                     self.last_saved_pose = (curr_x, curr_y)
                     self.explore_path.poses.append(pose)
                     self.explore_pub.publish(self.explore_path)
-                    self.get_logger().info(f'tracking at: x={curr_x:.2f}, y={curr_y:.2f}')
             else:
-                # updating the return path trail while heading back to the centre
+                # updating and publishing the return path trail while heading home
                 self.return_path.poses.append(pose)
                 self.return_pub.publish(self.return_path)
                 
@@ -80,20 +88,14 @@ class Node3Tracker(Node):
                     self.publish_status(f"status: arrived - accuracy {dist_to_origin:.2f}m")
 
         except TransformException:
-            # ignoring transform errors while the system is booting up
             pass
 
-    def get_distance(self, p1, p2):
-        # calculating the straight line distance between waypoints
-        return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
-
     def teleop_contingency_callback(self, msg):
-        # acknowledging manual teleoperation contingency
+        # acknowledging the manual teleop contingency
         self.publish_status("status: contingency - manual teleop active")
 
     def go_home_callback(self, msg):
         if self.is_returning: return
-        # switching to return mode and reversing the breadcrumb queue
         self.publish_status("status: returning - reversing path lifo")
         self.is_returning = True
         self.retracing_queue = self.history[::-1]
@@ -101,7 +103,6 @@ class Node3Tracker(Node):
         self.send_next_waypoint()
 
     def send_next_waypoint(self):
-        # checking if all saved breadcrumbs have been visited
         if not self.retracing_queue:
             self.publish_status("status: completed - sequence finished")
             return
