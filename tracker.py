@@ -1,136 +1,181 @@
+#!/usr/bin/env python3
+
+import math
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
+from rclpy.time import Time
+from rclpy.duration import Duration
 from nav2_msgs.action import NavigateToPose
+from action_msgs.msg import GoalStatus
 from tf2_ros import TransformException, Buffer, TransformListener
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 from std_msgs.msg import Empty, String
-import math
 
-class Node3Tracker(Node):
+class PathTrackingNode(Node):
     def __init__(self):
-        super().__init__('path_tracker_node')
+        super().__init__("snc_path_tracking_node")
+
+        # --- Parameters ---
+        self.map_frame = "map"
+        self.robot_frame = "base_link"
+        self.min_spacing_m = 0.20  
+        self.goal_timeout_sec = 12.0
+
+        # --- State ---
+        self.is_returning = False
+        self.is_complete = False
+        self.history = []         
+        self.return_history = []  
+        self.retracing_queue = []
+        self.goal_active = False
+        self.current_goal_handle = None
+        self.goal_sent_time = None
         
-        # initialising the tf2 buffer and listener for capturing the robot location
+        self.mission_start_time = self.get_clock().now()
+        self.auto_return_triggered = False
+
+        # --- Publishers ---
+        self.explore_pub = self.create_publisher(Path, '/path_explore', 10)
+        self.return_pub  = self.create_publisher(Path, '/path_return', 10)
+        self.status_pub  = self.create_publisher(String, '/snc_status', 10)
+
+        # --- Subscribers ---
+        self.create_subscription(Empty, '/trigger_home', self.go_home_callback, 10)
+        self.create_subscription(Empty, '/trigger_teleop', self.teleop_callback, 10)
+
+        # --- TF & Actions ---
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
-        
-        # creating publishers for paths and the required status topic
-        self.explore_pub = self.create_publisher(Path, '/path_explore', 10)
-        self.return_pub = self.create_publisher(Path, '/path_return', 10)
-        self.status_pub = self.create_publisher(String, '/snc_status', 10)
-        
-        self.explore_path = Path()
-        self.explore_path.header.frame_id = 'map'
-        self.return_path = Path()
-        self.return_path.header.frame_id = 'map'
+        self.nav_client = ActionClient(self, NavigateToPose, "/navigate_to_pose")
 
-        # setting up storage for retracing the path waypoints in reverse
-        self.history = [] 
-        self.last_saved_pose = None
-        self.is_returning = False
+        # --- Timers ---
+        self.create_timer(0.5, self.track_position)
+        self.create_timer(1.0, self.mission_watchdog) 
 
-        # initialising the action client for navigating through the saved waypoints
-        self._nav_client = ActionClient(self, NavigateToPose, '/navigate_to_pose')
+        self.get_logger().info("Node 3: Final Challenge Version Active.")
+        self.publish_status("STATUS: Exploration Active. Recording path.")
 
-        # subscribing to trigger topics for contingencies
-        self.trigger_sub = self.create_subscription(Empty, '/trigger_home', self.go_home_callback, 10)
-        self.teleop_sub = self.create_subscription(Empty, '/trigger_teleop', self.teleop_contingency_callback, 10)
-
-        # starting timer for position tracking
-        self.timer = self.create_timer(0.5, self.track_position)
-        self.publish_status("status: initialised - waiting for start")
-
-    def publish_status(self, info_string):
-        # broadcasting current logic state to the marking script
+    def publish_status(self, text):
         msg = String()
-        msg.data = info_string
+        msg.data = text
         self.status_pub.publish(msg)
-        self.get_logger().info(info_string)
+        self.get_logger().info(text)
 
-    def get_distance(self, p1, p2):
-        # calculating the straight line distance between two coordinates
-        return math.sqrt((p1[0] - p2[0])**2 + (p1[1] - p2[1])**2)
+    def teleop_callback(self, _msg):
+        self.publish_status("CONTINGENCY: Manual Teleop Active.")
 
     def track_position(self):
+        if self.is_complete: return
         try:
-            # looking up the latest transform between the map and the robot base
-            now = rclpy.time.Time()
-            t = self.tf_buffer.lookup_transform('map', 'base_link', now)
-            curr_x = t.transform.translation.x
-            curr_y = t.transform.translation.y
-            
-            pose = PoseStamped()
-            pose.header.frame_id = 'map'
-            pose.header.stamp = self.get_clock().now().to_msg()
-            pose.pose.position.x = curr_x
-            pose.pose.position.y = curr_y
-
-            # logging tracking data continuously for both exploration and return
-            self.get_logger().info(f'tracking at: x={curr_x:.2f}, y={curr_y:.2f}')
+            t = self.tf_buffer.lookup_transform(self.map_frame, self.robot_frame, Time(), timeout=Duration(seconds=0.2))
+            curr_x, curr_y = t.transform.translation.x, t.transform.translation.y
+            curr_quat = t.transform.rotation
 
             if not self.is_returning:
-                # recording breadcrumbs every 0.3 metres for high fidelity retracing
-                if self.last_saved_pose is None or self.get_distance((curr_x, curr_y), self.last_saved_pose) > 0.3:
-                    self.history.append((curr_x, curr_y))
-                    self.last_saved_pose = (curr_x, curr_y)
-                    self.explore_path.poses.append(pose)
-                    self.explore_pub.publish(self.explore_path)
+                dist = math.hypot(curr_x - self.history[-1][0], curr_y - self.history[-1][1]) if self.history else 999
+                if dist > self.min_spacing_m:
+                    self.history.append((curr_x, curr_y, curr_quat))
+                    self.publish_path(self.history, self.explore_pub)
             else:
-                # updating and publishing the return path trail while heading home
-                self.return_path.poses.append(pose)
-                self.return_pub.publish(self.return_path)
-                
-                # checking arrival accuracy when nearing the origin
-                dist_to_origin = math.sqrt(curr_x**2 + curr_y**2)
-                if dist_to_origin < 0.15:
-                    self.publish_status(f"status: arrived - accuracy {dist_to_origin:.2f}m")
+                self.return_history.append((curr_x, curr_y, curr_quat))
+                self.publish_path(self.return_history, self.return_pub)
 
         except TransformException:
             pass
 
-    def teleop_contingency_callback(self, msg):
-        # acknowledging the manual teleop contingency
-        self.publish_status("status: contingency - manual teleop active")
+    def mission_watchdog(self):
+        if self.goal_active and self.goal_sent_time:
+            elapsed = (self.get_clock().now() - self.goal_sent_time).nanoseconds / 1e9
+            if elapsed > self.goal_timeout_sec:
+                self.get_logger().warn(f"Watchdog: Waypoint stalled ({elapsed:.1f}s). Skipping.")
+                if self.current_goal_handle: self.current_goal_handle.cancel_goal_async()
+                self.advance_queue()
 
-    def go_home_callback(self, msg):
-        if self.is_returning: return
-        self.publish_status("status: returning - reversing path lifo")
+        mission_elapsed = (self.get_clock().now() - self.mission_start_time).nanoseconds / 1e9
+        if mission_elapsed > 240.0 and not self.is_returning and not self.auto_return_triggered:
+            self.auto_return_triggered = True
+            self.get_logger().error("MISSION CLOCK: 4 Minutes elapsed. Auto-returning home.")
+            self.go_home_callback(None)
+
+    def go_home_callback(self, _msg):
+        if self.is_returning or not self.history: return
         self.is_returning = True
-        self.retracing_queue = self.history[::-1]
-        self.retracing_queue.append((0.0, 0.0))
+        self.publish_status(f"STATUS: Returning Home. Retracing {len(self.history)} crumbs.")
+        
+        # Section 3.9.2: LIFO Retracing Logic
+        self.retracing_queue = list(reversed(self.history))
+        # Ensure the final target is the exact starting pose for 100% accuracy
+        self.retracing_queue.append(self.history[0]) 
         self.send_next_waypoint()
 
     def send_next_waypoint(self):
         if not self.retracing_queue:
-            self.publish_status("status: completed - sequence finished")
+            self.is_complete = True
+            self.publish_status("STATUS: CHALLENGE COMPLETE. Arrived Home. Stopping.")
             return
-            
+
+        if not self.nav_client.wait_for_server(timeout_sec=1.0):
+            return
+
         target = self.retracing_queue.pop(0)
+        crumb_num = len(self.history) - len(self.retracing_queue)
+        self.publish_status(f"STATUS: Retracing Crumb {crumb_num}/{len(self.history)}")
+
         goal = NavigateToPose.Goal()
-        goal.pose.header.frame_id = 'map'
+        goal.pose.header.frame_id = self.map_frame
+        goal.pose.header.stamp = self.get_clock().now().to_msg()
         goal.pose.pose.position.x = target[0]
         goal.pose.pose.position.y = target[1]
         
-        # applying hill fix by relaxing orientation for intermediate waypoints
-        if len(self.retracing_queue) > 0:
-            goal.pose.pose.orientation.w = 0.0
-        else:
-            goal.pose.pose.orientation.w = 1.0 # facing forward at the final stop
-            
-        self._nav_client.wait_for_server()
-        self._nav_client.send_goal_async(goal).add_done_callback(self.goal_response_callback)
+        # Final point uses original orientation, others use identity
+        goal.pose.pose.orientation = target[2] if not self.retracing_queue else self.get_identity_quat()
+
+        self.goal_active = True
+        self.goal_sent_time = self.get_clock().now()
+        self.nav_client.send_goal_async(goal).add_done_callback(self.goal_response_callback)
 
     def goal_response_callback(self, future):
-        # verifying if the navigation goal was accepted by the server
-        goal_handle = future.result()
-        if not goal_handle.accepted: return
-        goal_handle.get_result_async().add_done_callback(lambda _: self.send_next_waypoint())
+        handle = future.result()
+        if not handle.accepted:
+            self.advance_queue()
+            return
+        self.current_goal_handle = handle
+        handle.get_result_async().add_done_callback(lambda _: self.advance_queue())
+
+    def advance_queue(self):
+        self.goal_active = False
+        self.current_goal_handle = None
+        self.goal_sent_time = None
+        self.send_next_waypoint()
+
+    def get_identity_quat(self):
+        from geometry_msgs.msg import Quaternion
+        return Quaternion(x=0.0, y=0.0, z=0.0, w=1.0)
+
+    def publish_path(self, coords, publisher):
+        msg = Path()
+        msg.header.frame_id = self.map_frame
+        msg.header.stamp = self.get_clock().now().to_msg()
+        for x, y, q in coords:
+            ps = PoseStamped()
+            ps.header.frame_id = self.map_frame
+            ps.pose.position.x, ps.pose.position.y = x, y
+            ps.pose.orientation = q
+            msg.poses.append(ps)
+        publisher.publish(msg)
 
 def main(args=None):
-    # initialising the ros 2 system and spinning the tracker node
     rclpy.init(args=args)
-    node = Node3Tracker()
-    rclpy.spin(node)
-    rclpy.shutdown()
+    node = PathTrackingNode()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.shutdown()
+
+if __name__ == "__main__":
+    main()
