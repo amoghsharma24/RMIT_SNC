@@ -80,10 +80,7 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 
 **Node 2 (Hazard Detection):**
 
-- Detection rate: [X/5] markers (or [Y%] success)
-- Localization accuracy: ±[X] meters average
-- False positives: [Y] (detection confidence threshold: [Z]%)
-- Sensor used: [Laser]
+- 
 
 **Node 3 (Return-to-Home):**
 
@@ -99,6 +96,12 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 ### Strengths
 
 **Node 2:**
+
+- Uses sensor fusion: It does not rely only on the camera. It combines marker detection with laser distance data, which gives a better estimate of where the hazard is.
+- Runs vision locally on the robot: This reduces network delay and avoids problems from the unreliable shared robot network.
+- Start and return triggers are automatic: The system can detect the start marker, begin exploration, and trigger return-home after finding hazards or after the timeout.
+- Duplicate filtering: It avoids repeatedly publishing the same hazard when the robot sees the same marker multiple times.
+- Stable detection filtering: It waits for consistent detections before accepting a marker, reducing false positives from brief or noisy detections.
 
 **Node 3:**
 
@@ -117,6 +120,35 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 ### Limitations & Mitigations
 
 **Node 2:**
+
+- Approximate Angle Estimation: The pixel-to-angle conversion assumes a fixed camera field of view, which may not be perfectly accurate. This is likely one of the causes of inaccurate marker placement.
+  - Impact: Left/right errors in hazard positioning, leading to noticeable map misalignment
+  - Mitigation: Tune the field of view parameter experimentally, apply proper camera calibration to improve angle accuracy
+
+- Camera–Laser Misalignment: The camera and lidar are mounted in slightly different positions on the robot.
+  - Impact: Small positional offsets between detected hazards and their true location
+  - Possible Causes: Physical separation between camera and laser sensors, Lack of precise calibration between sensors
+  - Mitigation: Apply a fixed offset correction between camera and lidar frames, use calibrated sensor transforms for improved alignment
+
+- Reduced Accuracy at Long Distances: Laser readings become less reliable at greater distances. This also likely decreased placement accuracy.
+  - Impact: Increased localisation error (approximately ±0.3–0.5 m) for distant hazards
+  - Possible Causes: Sensor noise increases with range, lower resolution of laser scan at distance, wider spread of laser beams over longer distances
+  - Mitigation: Ignore detections beyond a distance threshold, use averaging or filtering of nearby laser readings, prioritise closer detections for more accurate placement
+
+- No Depth from Vision Alone: Distance is taken entirely from the laser scan rather than the camera.
+  -  Impact: Hazards cannot be localised if laser data is missing or incorrect
+   - Mitigation: Add validation checks for laser readings, use multiple laser samples instead of a single point
+
+- No Camera Calibration: The system uses assumed camera parameters instead of calibrated values.
+  - Impact: Reduced overall accuracy in hazard localisation
+  - Mitigation: Perform camera calibration to obtain accurate intrinsic parameters
+Apply distortion correction before processing detections
+
+- Processing Pauses During Detection: The robot briefly stops while processing hazards.
+  - Impact: Slower exploration and increased total task time
+  - Mitigation: Minimise pause duration during processing
+Allow detection to continue during movement where possible
+Optimise processing pipeline to reduce delay
 
 **Node 3:**
 
@@ -165,18 +197,6 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 
 ---
 
-## 5. Technical Integration & System Design
-
-### Data Flow
-
-```
-Node 1 (Nav)  →  Node 3 (Path Tracking)  →  Node 2 (Hazard Detection)
-   ↓                      ↓                          ↓
-/map (costmap)      /path_explore & /path_return   /hazards (markers)
-                                ↓
-                    All: /snc_status (monitoring)
-```
-
 ### Package Dependencies Summary
 
 - **Core:** rclpy, nav2_msgs, nav_msgs, geometry_msgs, std_msgs, action_msgs
@@ -186,7 +206,7 @@ Node 1 (Nav)  →  Node 3 (Path Tracking)  →  Node 2 (Hazard Detection)
 
 ---
 
-## 6. References & AI Tool Attribution
+## 5. References & AI Tool Attribution
 
 ### References
 
