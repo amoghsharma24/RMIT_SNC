@@ -80,10 +80,7 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 
 **Node 2 (Hazard Detection):**
 
-- Detection rate: [X/5] markers (or [Y%] success)
-- Localization accuracy: ±[X] meters average
-- False positives: [Y] (detection confidence threshold: [Z]%)
-- Sensor used: [Laser]
+-
 
 **Node 3 (Return-to-Home):**
 
@@ -100,9 +97,9 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 
 **Node 2:**
 
-- Uses sensor fusion: The system combines marker detection with laser distance data to estimate hazard positions more accurately.
-- Runs vision locally on the robot: This reduces network delay and avoids issues from the shared robot network.
-- Start and return triggers are automatic: The system can detect the start marker, begin exploration, and trigger return-home after finding hazards or after timeout.
+- Uses sensor fusion: It does not rely only on the camera. It combines marker detection with laser distance data, which gives a better estimate of where the hazard is.
+- Runs vision locally on the robot: This reduces network delay and avoids problems from the unreliable shared robot network.
+- Start and return triggers are automatic: The system can detect the start marker, begin exploration, and trigger return-home after finding hazards or after the timeout.
 - Duplicate filtering: It avoids repeatedly publishing the same hazard when the robot sees the same marker multiple times.
 - Stable detection filtering: It waits for consistent detections before accepting a marker, reducing false positives from brief or noisy detections.
 
@@ -188,18 +185,6 @@ During development, a key limitation was limited access to ROSbot 3.0s, as multi
 
 ---
 
-## 5. Technical Integration & System Design
-
-### Data Flow
-
-```
-Node 1 (Nav)  →  Node 3 (Path Tracking)  →  Node 2 (Hazard Detection)
-   ↓                      ↓                          ↓
-/map (costmap)      /path_explore & /path_return   /hazards (markers)
-                                ↓
-                    All: /snc_status (monitoring)
-```
-
 ### Package Dependencies Summary
 
 - **Core:** rclpy, nav2_msgs, nav_msgs, geometry_msgs, std_msgs, action_msgs
@@ -209,7 +194,7 @@ Node 1 (Nav)  →  Node 3 (Path Tracking)  →  Node 2 (Hazard Detection)
 
 ---
 
-## 6. References & AI Tool Attribution
+## 5. References & AI Tool Attribution
 
 ### References
 
