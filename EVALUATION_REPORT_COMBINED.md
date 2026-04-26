@@ -58,7 +58,7 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 
 **Node 2 (Hazard Detection):**
 
-- Demo: 2 hazards where detected and thier locations where off significantly, one marker was incorrectly identified and the return was not triggered
+- Demo: 2 hazards where detected and their locations where off significantly, one marker was incorrectly identified and the return was not triggered
 
 **Node 3 (Return-to-Home):**
 
@@ -70,7 +70,7 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 
 **Node 2:**
 
-- key metric: The system was able to detect and correctly identify all 5 markers placed, then send the return home signal. The location of the markers was innacurate, and they moved with the robot as they moved in rvis. I am unsure of the cause of this issue as the hazards where correctly published to the map topic as shown in the hazard topic logs in the evidence
+- key metric: The system was able to detect and correctly identify all 5 markers placed, then send the return home signal. The location of the markers was inaccurate, and they moved with the robot as they moved in rvis. I am unsure of the cause of this issue as the hazards where correctly published to the map topic as shown in the hazard topic logs in the evidence
 
 - Video evidence: shows the robot navigating through the maze using teleop, identifying the start and 5 hazard markers, then sending the return home signal. The logs of the start, return home and hazard topics where also recorded, as well as rvis
 
@@ -160,7 +160,7 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 - Path misalignment b/w exploration and return: The return path does not perfectly overlap with the exploration path, added in the evidence folder (green & purple lines. Green being \path_explore and purple being \path_return).
   - Possible Causes:
     - TF2 transform timing delays
-    - Slam drift during movement: During exploration, slam_toolbox updated the map as new features were discovered this made it jump the coordinate origin. Since breadcrumbs are saved as fixed coordinates, they appeared out of bounds after the map shift).
+    - Slam drift during movement: During exploration, slam_toolbox updated the map as new features were discovered this made it jump the coordinate origin. Since breadcrumbs are saved as fixed coordinates, they appeared out of bounds after the map shift.
     - Evidence: Added as a separate screenshot in evidence labelled "path misalignment".
 - Final orientation not controlled: The robot returns to the correct position but may not match the original orientation.
 
@@ -182,7 +182,7 @@ During development, a key limitation was limited access to ROSbot 3.0s, as multi
 
 - Node2_iphone_recording.mov: Recording of the robot navigating the maze using teleop and detecting all the markers.
 
-- Node2_screenRecording.mkv: Screen recording of RViz and start and return home topics and the hazards topic.
+- Node2_screenRecording.mkv: Screen recording of RViz and start and return home topics and the hazards topic, taken simultaniusly as the Node2_iphone_recording.mov
 
 ## 5. References & AI Tool Attribution
 
