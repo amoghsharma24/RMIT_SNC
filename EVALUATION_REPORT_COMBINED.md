@@ -12,7 +12,7 @@
 
 ### 1.2 Node 2: Hazard Marker Detection & Placement
 
-**Student:** [Leo] | **Functionality:**
+**Student:** Leo Barnes | **Functionality:**
 
 The vision pipeline uses find_object_2d, running locally on the robot, to detect hazard markers and determine their position in the camera image. The detector outputs the marker ID and its position in the image.
 
@@ -54,27 +54,29 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 
 ## 2. Performance & Analysis
 
+### 2.1 Challenge Demonstration Results
+
 **Node 2 (Hazard Detection):**
 
 - Demo: 2 hazards where detected and thier locations where off significantly, and the return was not triggered
-- 
+
+**Node 3 (Return-to-Home):**
+
+- Demo: During the Week 6 demo, Node 3 did not fully complete the return-to-home task, but it published \path_explore. After refinement and additional testing, the node successfully completed full return-to-home sequences autonomously.
+
+---
+
+### 2.2 Independent Testing Results
+
+**Node 2:**
 
 **Node 3:**
 
-- Demo: During the Week 6 demo, Node 3 did not fully complete the return-to-home task, but it published \path_explore. However, after refinement and additional testing, the node successfully completed full return-to-home sequences autonomously.
-
 - Key Metric: The system consistently returned the robot to its starting position with an average positional error between 0.06 m and 0.15 m this was measured using TF2 transforms and RViz visualisation tools.
 
-- Video evidence: shows the robot completing exploration and return phases without manual input and with clear status updates published throughout execution.
+- Video evidence: shows the robot completing exploration and return phases without manual input (except /trigger_home) and with clear status updates published throughout execution.
 
-### 2.2 Testing Results (Independent Testing)
-
-**Node 1 (Navigation):**
-
-- Trial 1: [Coverage %, exploration time]
-- Trial 2: [Coverage %, exploration time]
-- Trial 3: [Coverage %, exploration time]
-- Avg: [X]% coverage, [Y] min exploration
+### 2.3 Quantified Results (Independent Testing)
 
 **Node 2 (Hazard Detection):**
 
@@ -83,15 +85,12 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 - False positives: [Y] (detection confidence threshold: [Z]%)
 - Sensor used: [Laser]
 
----
-
 **Node 3 (Return-to-Home):**
 
-- Waypoints recorded (4-min exploration): 30–50 points
-- Return accuracy: ±0.06–0.15m from origin (3 trials, avg: [X]m)
-- Path retracing fidelity: <0.2m spatial deviation
-- Watchdog timeouts: 0–2 per trial (successful recovery)
-- Mission completion: "CHALLENGE COMPLETE. Arrived Home."
+- Waypoints recorded: 25-40 points during exploration
+- Return accuracy: ±0.06–0.15 m (3 trials)
+- Path fidelity: <0.20 m deviation from original path
+- Mission completion: 100% success rate after refinement
 
 ---
 
@@ -99,51 +98,47 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 
 ### Strengths
 
-Strengths
-Robust Transform Chain (Node 2, 3):
-Uses TF2 for accurate frame conversions (map ↔ base_link ↔ camera)
+**Node 2:**
 
-- Evidence: RViz visualization accuracy and transform lookup logs
-  Nav2 Integration (Node 3):
-  Uses NavigateToPose ActionClient for autonomous waypoint navigation with asynchronous callbacks
-- Evidence: Terminal action logs and successful navigation sequences
-  Real-Time Status Publishing (All nodes):
-  Publishes clear state transitions on /snc_status for system monitoring
-- Evidence: RViz topic display and status messages in recorded output
-  Error Recovery via Watchdog (Node 3):
-  Detects stalled navigation goals (~12s timeout) and automatically skips them
-- Evidence: Logs such as “Waypoint stalled… Skipping”
-  Sensor Fusion (Node 2):
-  Combines camera-based marker detection with laser scan data for hazard localisation
-- Evidence: RViz markers aligned with real-world hazard positions
-  Local Camera Processing (Node 2):
-  Runs detection directly on the robot, reducing latency and improving reliability
-- Evidence: Consistent detection performance without network delay
+**Node 3:**
+
+- Consistent Return-to-Home Accuracy: The robot was able to return to its starting position within ±0.06–0.15 m across multiple trials.
+
+- Reliable Path Tracking: The system successfully recorded and published the exploration path and used it for return navigation.
+
+- Sequential Waypoints (LIFO): The robot retraced its path using a Last-In-First-Out structure, So it only explored the known safe path.
+
+- Failure Handling (Watchdog Timer): Stalled navigation goals were detected and skipped, allowing the robot to continue instead of getting stuck.
+
+- Clear System Feedback: Status updates such as “Exploration Active” and “Returning Home” were consistently published.
+
+**Evidence:** Rviz visautionsation, TF2 based distance measurement, terminal logs, video recording of the robot, screen recording of the terminal and rviz.
 
 ### Limitations & Mitigations
 
-- Transform Lookup Latency (Node 3):
-  Occurs 1–2 times per trial, causing ~0.5 m path deviation
-- Mitigation: Increased TF timeout from 0.1s to 0.2s
-  Nav2 Goal Timeout in Tight Spaces (Node 1, 3):
-  Occurs 1–3 times per trial, causing ~3–5% waypoint loss
-- Mitigation: Watchdog skips stalled goals and continues navigation
-  Marker Detection in Low-Light Conditions (Node 2):
-  Reduced detection reliability under poor lighting
-- Impact: Missed or delayed hazard detection
-- Mitigation: Improved lighting conditions and closer approach to markers
-  Sensor Noise at Long Range (Node 2):
-  Occurs consistently beyond ~2.5 m
-- Impact: ±0.3–0.4 m localisation error
-- Mitigation: Distance thresholding and filtering (e.g. windowed laser sampling)
-  Orientation Mismatch at Return Goal (Node 3):
-  Robot may face incorrect direction at final pose
-- Impact: Minor orientation error
-- Mitigation: Accepted trade-off prioritising speed over final orientation accuracy
+**Node 2:**
+
+**Node 3:**
+
+- Path Misalignment Between Exploration and Return: The return path does not perfectly overlap with the exploration path, as seen in RViz (green vs purple lines).
+  - Impact: Small deviations from original path (<0.2–0.5 m)
+  - Possible Causes:
+    - TF2 transform timing delays
+    - Odometry drift during movement
+    - Nav2 local planner smoothing or re-adjusting trajectories
+  - Evidence: RViz screenshot showing non-overlapping paths
+- Waypoint Skipping Due to Navigation Failures: Some waypoints were skipped due to timeouts (watchdog activation).
+  - Impact: Slight loss in path accuracy
+  - Evidence: Terminal logs showing "Retracing Crumb X/Y" with occasional skips
+- Dependence on Localization Accuracy: The system relies heavily on TF2 and odometry data.
+  - Impact: Small positional errors accumulate over time
+  - Mitigation: Use of tolerance threshold (0.15 m)
+- Final Orientation Not Controlled: The robot returns to the correct position but may not match the original orientation.
+  - Impact: Minor, does not affect task completion
 
 ---
 
-## 4. Evidence &
+## 4. Evidence & Validation
 
 ### Video Submissions (MS Teams)
 
