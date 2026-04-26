@@ -18,13 +18,21 @@
 
 ### 1.2 Node 2: Hazard Marker Detection & Placement
 
-**Student:** [Name] | **Functionality:** Vision-based marker detection and map-relative localization
+**Student:** [Leo] | **Functionality:** Vision-based marker detection and map-relative localization
 
-[Brief summary—1–2 sentences on vision pipeline and sensor fusion approach (laser/IR/depth)]
+The vision pipeline uses find_object_2d run localy on the robot to detect hazard markers and find thier in image position. This ws fused with lazer scan data by converting the image position to a viewing angle and sampling the lazar range. This allows hazards to be detected and transformed into the global map frame using TF
 
-**Key Dependencies:** find_object_2d, cv2, tf2_ros, visualization_msgs, sensor_msgs  
-**Parameters:** detection_confidence_threshold, max_distance_m, [sensor-specific params]  
-**Training Data/Config:** [find_object_2d marker database or camera calibration file]
+**Key Dependencies:**
+- find_object_2d
+- tf2_ros
+- sensor_msgs
+- visualization_msgs
+- cv2 (OpenCV)
+
+**Training Data/Launch:** 
+- **Marker Database:** provided find_object_2d marker database containing images of each hazard marker, rescaled to 500x500px
+- **Detection Method:** ORB feature-based matching compares live camera frames to stored marker images
+- **Launch** universal launch file titled "find_hazards.launch.py"
 
 ### 1.3 Node 3: Position Tracking & Return-to-Home
 
@@ -40,29 +48,26 @@ Records robot position via TF2 transforms at 0.20m spacing intervals. Upon `/tri
 
 ## 2. Performance & Analysis
 
-### 2.1 Challenge Demonstration & Testing Results
-
-| Node       | Demo Status               | Key Metric                                     | Evidence                                         |
-| ---------- | ------------------------- | ---------------------------------------------- | ------------------------------------------------ |
-| **Node 1** | ✅ / ❌                   | [Exploration coverage %] or [exploration time] | [RViz map screenshot]                            |
-| **Node 2** | ✅ / ❌                   | [X/5 markers detected], [±X accuracy]          | [RViz hazard overlay; terminal logs]             |
-| **Node 3** | ❌ (Week 6) → ✅ (Apr 26) | Return accuracy: ±0.06–0.15m                   | RViz path overlay + terminal status logs + video |
-
-### 2.2 Quantified Results (Independent Testing)
-
-**Node 1 (Navigation):**
-
-- Trial 1: [Coverage %, exploration time]
-- Trial 2: [Coverage %, exploration time]
-- Trial 3: [Coverage %, exploration time]
-- Avg: [X]% coverage, [Y] min exploration
+### 2.1 Challenge Demonstration Results
 
 **Node 2 (Hazard Detection):**
 
-- Detection rate: [X/5] markers (or [Y%] success)
-- Localization accuracy: ±[X] meters average
-- False positives: [Y] (detection confidence threshold: [Z]%)
-- Sensor used: [Laser/IR/Depth]
+
+**Node 3 (Return-to-Home):**
+
+- Waypoints recorded (4-min exploration): 30–50 points
+- Return accuracy: ±0.06–0.15m from origin (3 trials, avg: [X]m)
+- Path retracing fidelity: <0.2m spatial deviation
+- Watchdog timeouts: 0–2 per trial (successful recovery)
+- Mission completion: "CHALLENGE COMPLETE. Arrived Home."
+
+---
+
+### 2.2 Testing Results (Independent Testing)
+
+**Node 2 (Hazard Detection):**
+
+
 
 **Node 3 (Return-to-Home):**
 
@@ -81,11 +86,11 @@ Records robot position via TF2 transforms at 0.20m spacing intervals. Upon `/tri
 | Strength                                                                                                             | Responsible Node(s) | Evidence                                                       |
 | -------------------------------------------------------------------------------------------------------------------- | ------------------- | -------------------------------------------------------------- |
 | **Robust Transform Chain:** Uses TF2 for accurate frame conversions (map↔base_link↔camera)                           | Node 2, 3           | RViz visualization accuracy; transform lookup logs             |
-| **Nav2 Integration:** Leverages `NavigateToPose` ActionClient for autonomous waypoint following with async callbacks | Node 1, 3           | Terminal action status logs; successful navigation sequences   |
+| **Nav2 Integration:** Leverages `NavigateToPose` ActionClient for autonomous waypoint following with async callbacks | Node 3           | Terminal action status logs; successful navigation sequences   |
 | **Real-Time Status Pub.:** Clear state transitions published on `/snc_status` for monitoring                         | All nodes           | RViz string topic display; status messages in video            |
 | **Error Recovery via Watchdog:** Detects stalled goals (12s timeout) and auto-advances to next waypoint              | Node 3              | Terminal logs: "Watchdog: Waypoint stalled (13.2s). Skipping." |
-| **Parametric Design:** All tuning constants declared at initialization (no hardcoded magic numbers)                  | All nodes           | Code review; easy reproducibility                              |
-| **Sensor Fusion:** Node 2 combines camera detection + [laser/IR/depth] for robust 3D localization                    | Node 2              | RViz marker overlay showing accurate placement                 |
+| **Sensor Fusion:** Node 2 combines camera detection + laser for robust 3D localization                    | Node 2              | RViz marker overlay showing accurate placement                 |
+| **Local Camera:** Node 2 runs entirely on the robot, improving detection time and reliability                | Node 2              | RViz marker overlay showing accurate placement                 |
 
 ### Limitations & Mitigations
 
@@ -99,7 +104,8 @@ Records robot position via TF2 transforms at 0.20m spacing intervals. Upon `/tri
 
 ---
 
-## 4. Evidence & Validation
+## 4. Evidence & 
+
 
 ### Video Submissions (MS Teams)
 
