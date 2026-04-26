@@ -1,6 +1,6 @@
 # ROS2 Search & Navigation Challenge - Evaluation Report
 
-**Group:** [Group Number] | **Date:** April 26, 2026
+**Group:** A2-SNC 6
 
 ---
 
@@ -8,13 +8,7 @@
 
 ### 1.1 Node 1: Navigation Logic
 
-**Student:** [Name] | **Functionality:** Autonomous exploration and waypoint navigation
-
-[Brief summary—1–2 sentences on exploration strategy used (frontier/wall-follow/custom)]
-
-**Key Dependencies:** nav2_msgs, geometry_msgs, sensor_msgs (laser/camera)  
-**Parameters:** exploration_strategy, frontier_threshold, max_exploration_time  
-**Launch:** [reference file if created]
+- [idk what to write here yet]
 
 ### 1.2 Node 2: Hazard Marker Detection & Placement
 
@@ -28,13 +22,17 @@
 
 ### 1.3 Node 3: Position Tracking & Return-to-Home
 
-**Student:** [Name] | **Functionality:** Path recording during exploration; autonomous LIFO-based retrace
+**Student:** Amogh Sharma | **Functionality:** tracks and publishes the path of the robot taken while exploring, returns to the robot’s home (starting) position by following this path in reverse order. tracks and publishes the path of the robot taken when returning to home.
 
-Records robot position via TF2 transforms at 0.20m spacing intervals. Upon `/trigger_home`, reverses recorded breadcrumbs and navigates waypoints sequentially using Nav2 `NavigateToPose` ActionClient with 12-second watchdog timeout.
+This node records the robot’s position continuously using TF2 transforms between the map and base_link frames. Positions are stored at fixed spatial intervals (0.20 m) to avoid redundant data while maintaining path accuracy.
+
+When a return command is triggered, the recorded path is reversed using a Last-In-First-Out (LIFO) approach. The robot then navigates through each recorded waypoint sequentially using the Nav2 NavigateToPose ActionClient. This ensures that the robot follows the exact path it previously travelled, rather than generating a new path.
+
+To maintain the responsiveness, the node uses asynchronous callbacks which allows navigation feedback and transform lookups to run without blocking execution. I also added a watchdog timer (12 seconds) to detect stalled navigation goals. If a waypoint is not reached within this time, it is skipped to prevent deadlock. A positional tolerance is also added to account for small odometry errors during movement.
 
 **Key Dependencies:** rclpy, nav2_msgs, tf2_ros, nav_msgs, std_msgs, action_msgs  
 **Parameters:** min_spacing_m = 0.20, goal_timeout_sec = 12.0, mission_timeout = 240.0s  
-**No launch file required** — all parameters declared in-node.
+**Launch Notes:** No external launch file required. All parameters are declared and initialised within the node.
 
 ---
 
@@ -42,11 +40,18 @@ Records robot position via TF2 transforms at 0.20m spacing intervals. Upon `/tri
 
 ### 2.1 Challenge Demonstration & Testing Results
 
-| Node       | Demo Status               | Key Metric                                     | Evidence                                         |
-| ---------- | ------------------------- | ---------------------------------------------- | ------------------------------------------------ |
-| **Node 1** | ✅ / ❌                   | [Exploration coverage %] or [exploration time] | [RViz map screenshot]                            |
-| **Node 2** | ✅ / ❌                   | [X/5 markers detected], [±X accuracy]          | [RViz hazard overlay; terminal logs]             |
-| **Node 3** | ❌ (Week 6) → ✅ (Apr 26) | Return accuracy: ±0.06–0.15m                   | RViz path overlay + terminal status logs + video |
+| Node       | Demo Status | Key Metric                            | Evidence                             |
+| ---------- | ----------- | ------------------------------------- | ------------------------------------ |
+| **Node 1** | -           | -                                     | -                                    |
+| **Node 2** |             | [X/5 markers detected], [±X accuracy] | [RViz hazard overlay; terminal logs] |
+
+**Node 3:**
+
+- Demo Status: During the Week 6 demo, Node 3 did not fully complete the return-to-home task, but it published \path_explore. However, after refinement and additional testing, the node successfully completed full return-to-home sequences autonomously.
+
+- Key Metric: The system consistently returned the robot to its starting position with an average positional error between 0.06 m and 0.15 m this was measured using TF2 transforms and RViz visualisation tools.
+
+- Video evidence: shows the robot completing exploration and return phases without manual input and with clear status updates published throughout execution.
 
 ### 2.2 Quantified Results (Independent Testing)
 
