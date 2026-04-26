@@ -12,7 +12,7 @@
 
 ### 1.2 Node 2: Hazard Marker Detection & Placement
 
-**Student:** Leo Barnes | **Functionality:**
+**Student:** Leo Barnes S4005922 | **Functionality:**
 
 The vision pipeline uses find_object_2d, running locally on the robot, to detect hazard markers and determine their position in the camera image. The detector outputs the marker ID and its position in the image.
 
@@ -38,7 +38,7 @@ To improve reliability, detections must be consistent over multiple frames befor
 
 ### 1.3 Node 3: Position Tracking & Return-to-Home
 
-**Student:** Amogh Sharma | **Functionality:** tracks and publishes the path of the robot taken while exploring, returns to the robot’s home (starting) position by following this path in reverse order. tracks and publishes the path of the robot taken when returning to home.
+**Student:** Amogh Sharma S4037298 | **Functionality:** tracks and publishes the path of the robot taken while exploring, returns to the robot’s home (starting) position by following this path in reverse order. tracks and publishes the path of the robot taken when returning to home.
 
 This node records the robot’s position continuously using TF2 transforms between the map and base_link frames. Positions are stored at fixed spatial intervals (0.20 m) to avoid redundant data while maintaining path accuracy.
 
@@ -84,7 +84,9 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 
 **Node 2 (Hazard Detection):**
 
-- **Node 3 (Return-to-Home):**
+- Hazard placement error: ~ 1m, hazards move with bot on RVIS
+
+**Node 3 (Return-to-Home):**
 
 - Waypoints recorded: 25-40 points during exploration
 - Return accuracy: ±0.06–0.15 m (3 trials)
