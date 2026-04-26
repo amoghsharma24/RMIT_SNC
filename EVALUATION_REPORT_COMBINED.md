@@ -84,9 +84,7 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 
 **Node 2 (Hazard Detection):**
 
-- Placement error: ~1m, markers follow bots movements
-
-**Node 3 (Return-to-Home):**
+- **Node 3 (Return-to-Home):**
 
 - Waypoints recorded: 25-40 points during exploration
 - Return accuracy: ±0.06–0.15 m (3 trials)
@@ -172,6 +170,16 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
   - Mitigation: Use of tolerance threshold (0.15 m)
 - Final Orientation Not Controlled: The robot returns to the correct position but may not match the original orientation.
   - Impact: Minor, does not affect task completion
+- Path misalignment b/w exploration and return: The return path does not perfectly overlap with the exploration path, added in the evidence folder (green & purple lines. Green being \path_explore and purple being \path_return).
+  - Possible Causes:
+    - TF2 transform timing delays
+    - Slam drift during movement: During exploration, slam_toolbox updated the map as new features were discovered this made it jump the coordinate origin. Since breadcrumbs are saved as fixed coordinates, they appeared out of bounds after the map shift).
+    - Evidence: Added as a separate screenshot in evidence labelled "path misalignment".
+- Final orientation not controlled: The robot returns to the correct position but may not match the original orientation.
+
+### General Limitations
+
+During development, a key limitation was limited access to ROSbot 3.0s, as multiple teams were sharing a small number of units. This meant our team had a period of about a week without direct access to them, which slowed down real-world testing. To work around this, most development and testing was done using simulation and the ROSbot 2.0s and this introduced a real gap. The behaviour in simulation did not always match the physical robot.
 
 ---
 
@@ -185,7 +193,6 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 2. **Physical Robot Hardware Video:** [Filename]
    - Shows: Robot autonomously navigating and returning to origin
    - Duration: [X] min
-
 
 ### Quantitative Evidence
 
@@ -216,41 +223,12 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 
 ### References
 
-1. ROS2 Documentation: TF2 Transforms — https://docs.ros.org/en/humble/Concepts/Intermediate/About-Transforms.html
-2. Nav2 Stack: NavigateToPose Action — https://docs.ros2.org/latest/api/nav2_msgs/
-3. find_object_2d ROS Package — https://wiki.ros.org/find_object_2d
-4. RMIT AIIL Course Materials: ROS2 Basics in 5 Days (TheConstruct)
+1. ROS2 Documentation: TF2 Transforms: https://docs.ros.org/en/humble/Concepts/Intermediate/About-Transforms.html
+2. Nav2 Stack: NavigateToPose Action: https://docs.ros2.org/latest/api/nav2_msgs/
+3. RMIT AIIL Course Materials: ROS2 Basics in 5 Days.
+4. The AIIL wiki.
 
 ### AI Tool Usage Summary
 
-**ChatGPT (OpenAI) — Engineering Co-Pilot Role (Estimated 15% of total code)**
-
-AI assistance was used strategically for:
-
-1. **ROS2 Boilerplate:** ActionClient async callback patterns; publisher/subscriber templates (5%)
-2. **Debugging Support:** TF2 frame transformation errors; RMW deserialization issues (3%)
-3. **Algorithm Pseudocode:** Watchdog timer logic; LIFO breadcrumb reversal (5%)
-4. **Professional Communication:** Report structure and technical writing (2%)
-
-**Summary:** Core algorithmic logic (breadcrumb recording, path retracing, marker localization, navigation strategies) developed independently. AI used primarily for standard ROS2 patterns and error recovery code to accelerate development.
-
----
-
-## 7. Conclusion
-
-This evaluation report demonstrates a **complete, autonomous ROS2 system** for the Search & Navigation Challenge. The three nodes successfully integrate to:
-
-- **Explore** unknown environments autonomously (Node 1)
-- **Detect & localize** hazard markers in map coordinates (Node 2)
-- **Track** exploration path and **autonomously retrace** to origin (Node 3)
-
-**Demonstrated Achievement:** Node 3 achieved **0.06–0.15m return accuracy** in post-demo testing (April 26), with video evidence of successful autonomous return-to-home. Nodes 1 & 2 contributed [X]% to challenge completion during demonstration.
-
-**Robustness:** Watchdog timers, TF2-based frame transforms, and status publishing ensure reliable operation across diverse environments. Limitations documented honestly; mitigations implemented where feasible.
-
----
-
-**Submitted:** April 26, 2026  
-**Video Evidence:** MS Teams → [Channel/Folder]  
-**Code Repository:** [GitHub/Bitbucket Link]  
-**Group Members:** [Names]
+**Node 2:**
+**Node 3:** Added a .txt file with the AI logs.
