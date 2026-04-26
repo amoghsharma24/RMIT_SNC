@@ -12,9 +12,15 @@
 
 ### 1.2 Node 2: Hazard Marker Detection & Placement
 
-**Student:** [Leo] | **Functionality:** Vision-based marker detection and map-relative localization
+**Student:** [Leo] | **Functionality:**
 
-The vision pipeline uses find_object_2d run localy on the robot to detect hazard markers and find thier in image position. This ws fused with lazer scan data by converting the image position to a viewing angle and sampling the lazar range. This allows hazards to be detected and transformed into the global map frame using TF
+The vision pipeline uses find_object_2d, running locally on the robot, to detect hazard markers and determine their position in the camera image. The detector outputs the marker ID and its position in the image.
+
+This image position is combined with laser scan data by converting the horizontal pixel location into a viewing angle using the camera’s field of view. The laser scan is then sampled at this angle to get the distance to the object, allowing the system to estimate the marker’s position relative to the robot.
+
+The position is first calculated in the robot’s base_link frame, and then transformed into the global map frame using TF2. This allows all hazards to be placed correctly on the map and visualised in RViz.
+
+To improve reliability, detections must be consistent over multiple frames before being accepted, and duplicate hazards are ignored based on their position. This helps reduce noise and improves accuracy.
 
 **Key Dependencies:**
 
@@ -48,40 +54,20 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 
 ## 2. Performance & Analysis
 
-### 2.1 Challenge Demonstration Results
-
 **Node 2 (Hazard Detection):**
 
-- 2 hazards where detected and thier locations where off significantly, and the return was not triggered
-
-**Node 3 (Return-to-Home):**
-
-- Waypoints recorded (4-min exploration): 30–50 points
-- Return accuracy: ±0.06–0.15m from origin (3 trials, avg: [X]m)
-- Path retracing fidelity: <0.2m spatial deviation
-- Watchdog timeouts: 0–2 per trial (successful recovery)
-- Mission completion: "CHALLENGE COMPLETE. Arrived Home."
-
----
-
-### 2.2 Testing Results (Independent Testing)
-
-### 2.1 Challenge Demonstration & Testing Results
-
-| Node       | Demo Status | Key Metric                            | Evidence                             |
-| ---------- | ----------- | ------------------------------------- | ------------------------------------ |
-| **Node 1** | -           | -                                     | -                                    |
-| **Node 2** |             | [X/5 markers detected], [±X accuracy] | [RViz hazard overlay; terminal logs] |
+- Demo: 2 hazards where detected and thier locations where off significantly, and the return was not triggered
+- 
 
 **Node 3:**
 
-- Demo Status: During the Week 6 demo, Node 3 did not fully complete the return-to-home task, but it published \path_explore. However, after refinement and additional testing, the node successfully completed full return-to-home sequences autonomously.
+- Demo: During the Week 6 demo, Node 3 did not fully complete the return-to-home task, but it published \path_explore. However, after refinement and additional testing, the node successfully completed full return-to-home sequences autonomously.
 
 - Key Metric: The system consistently returned the robot to its starting position with an average positional error between 0.06 m and 0.15 m this was measured using TF2 transforms and RViz visualisation tools.
 
 - Video evidence: shows the robot completing exploration and return phases without manual input and with clear status updates published throughout execution.
 
-### 2.2 Quantified Results (Independent Testing)
+### 2.2 Testing Results (Independent Testing)
 
 **Node 1 (Navigation):**
 
