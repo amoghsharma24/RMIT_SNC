@@ -140,8 +140,8 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
   - Mitigation: Ignore detections beyond a distance threshold, use averaging or filtering of nearby laser readings, prioritise closer detections for more accurate placement
 
 - No Depth from Vision Alone: Distance is taken entirely from the laser scan rather than the camera.
-  -  Impact: Hazards cannot be localised if laser data is missing or incorrect
-   - Mitigation: Add validation checks for laser readings, use multiple laser samples instead of a single point
+  - Impact: Hazards cannot be localised if laser data is missing or incorrect
+  - Mitigation: Add validation checks for laser readings, use multiple laser samples instead of a single point
 
 - No Camera Calibration: The system uses assumed camera parameters instead of calibrated values.
   - Impact: Reduced overall accuracy in hazard localisation
@@ -157,21 +157,6 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 
 **Node 3:**
 
-- Path Misalignment Between Exploration and Return: The return path does not perfectly overlap with the exploration path, as seen in RViz (green vs purple lines).
-  - Impact: Small deviations from original path (<0.2–0.5 m)
-  - Possible Causes:
-    - TF2 transform timing delays
-    - Odometry drift during movement
-    - Nav2 local planner smoothing or re-adjusting trajectories
-  - Evidence: RViz screenshot showing non-overlapping paths
-- Waypoint Skipping Due to Navigation Failures: Some waypoints were skipped due to timeouts (watchdog activation).
-  - Impact: Slight loss in path accuracy
-  - Evidence: Terminal logs showing "Retracing Crumb X/Y" with occasional skips
-- Dependence on Localization Accuracy: The system relies heavily on TF2 and odometry data.
-  - Impact: Small positional errors accumulate over time
-  - Mitigation: Use of tolerance threshold (0.15 m)
-- Final Orientation Not Controlled: The robot returns to the correct position but may not match the original orientation.
-  - Impact: Minor, does not affect task completion
 - Path misalignment b/w exploration and return: The return path does not perfectly overlap with the exploration path, added in the evidence folder (green & purple lines. Green being \path_explore and purple being \path_return).
   - Possible Causes:
     - TF2 transform timing delays
@@ -189,37 +174,15 @@ During development, a key limitation was limited access to ROSbot 3.0s, as multi
 
 ### Video Submissions (MS Teams)
 
-1. **RViz + Terminal Screen Recording:** [Filename]
-   - Shows: Full exploration → return-to-home sequence; path visualization (green/red); status transitions
-   - Duration: [X] min
-2. **Physical Robot Hardware Video:** [Filename]
-   - Shows: Robot autonomously navigating and returning to origin
-   - Duration: [X] min
+- Node3_screen_recording.mkv: A screen recording of RViz and the terminal running at the same time. This shows the LIFO retracing logic in action, including the robot navigating through all 25 recorded waypoints.
 
-### Quantitative Evidence
+- Node3_iphone_rosbot3_recording.MOV: A video of the physical ROSbot 3.0 (Underdark) completing the return-to-home task. This confirms that the robot successfully returned to its starting position.
 
-- **RViz Screenshots:** Path overlays (exploration vs. return); marker positions; final robot location
-- **Terminal Logs:** Status messages, goal timeouts, transform lookups, action results
-- **Metrics Table:** Waypoints recorded, accuracy ±X.XXm, coverage %, detection rate
+- Node3_path_misalignment.png: A RViz screenshot showing the difference between the exploration path and the return path. This image supports the analysis in Section 3 and highlights that while the robot followed the correct waypoints, the actual path taken during return was different which was likely due to the slam drift.
 
-### Claims-to-Evidence Mapping
+- Node2_iphone_recording.mov: Recording of the robot navigating the maze using teleop and detecting all the markers.
 
-- _"Node 3 recorded 30–50 waypoints"_ → RViz path visualization + terminal output
-- _"Return accuracy <0.15m"_ → RViz distance tool + tf2 transform logs
-- _"Node 2 detected [X] of 5 markers"_ → RViz `/hazards` topic visualization + video observation
-- _"Watchdog prevents deadlock"_ → Terminal log entries: "Watchdog: Waypoint stalled..."
-- _"Fully autonomous completion"_ → Video showing zero manual intervention during return phase
-
----
-
-### Package Dependencies Summary
-
-- **Core:** rclpy, nav2_msgs, nav_msgs, geometry_msgs, std_msgs, action_msgs
-- **Sensing:** tf2_ros, sensor_msgs (LaserScan, Image, CameraInfo, Range)
-- **Vision:** find_object_2d, cv2 (OpenCV)
-- **Notes:** All dependencies are standard ROS2 packages; no custom message types required
-
----
+- Node2_screenRecording.mkv: Screen recording of RViz and start and return home topics and the hazards topic.
 
 ## 5. References & AI Tool Attribution
 
@@ -232,5 +195,5 @@ During development, a key limitation was limited access to ROSbot 3.0s, as multi
 
 ### AI Tool Usage Summary
 
-**Node 2:**
+**Node 2:** Added a chatgpt log file.
 **Node 3:** Added a .txt file with the AI logs.
