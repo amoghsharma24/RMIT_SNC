@@ -80,9 +80,7 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 
 **Node 2 (Hazard Detection):**
 
--
-
-**Node 3 (Return-to-Home):**
+- **Node 3 (Return-to-Home):**
 
 - Waypoints recorded: 25-40 points during exploration
 - Return accuracy: ±0.06–0.15 m (3 trials)
@@ -146,10 +144,11 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 
 **Node 3:**
 
-- Path misalignment b/w exploration and return: The return path does not perfectly overlap with the exploration path, added in the evidence folder (green & purple lines. Green being \path_explore and purple being \path_return). - Possible Causes:
-  - TF2 transform timing delays
-  - Slam drift during movement: During exploration, slam_toolbox updated the map as new features were discovered this made it jump the coordinate origin. Since breadcrumbs are saved as fixed coordinates, they appeared out of bounds after the map shift).
-  - Evidence: Added as a separate screenshot in evidence labelled "path misalignment".
+- Path misalignment b/w exploration and return: The return path does not perfectly overlap with the exploration path, added in the evidence folder (green & purple lines. Green being \path_explore and purple being \path_return).
+  - Possible Causes:
+    - TF2 transform timing delays
+    - Slam drift during movement: During exploration, slam_toolbox updated the map as new features were discovered this made it jump the coordinate origin. Since breadcrumbs are saved as fixed coordinates, they appeared out of bounds after the map shift).
+    - Evidence: Added as a separate screenshot in evidence labelled "path misalignment".
 - Final orientation not controlled: The robot returns to the correct position but may not match the original orientation.
 
 ### General Limitations
@@ -162,35 +161,15 @@ During development, a key limitation was limited access to ROSbot 3.0s, as multi
 
 ### Video Submissions (MS Teams)
 
-1. **RViz + Terminal Screen Recording:** [Filename]
-   - Shows: Full exploration → return-to-home sequence; path visualization (green/red); status transitions
-   - Duration: [X] min
-2. **Physical Robot Hardware Video:** [Filename]
-   - Shows: Robot autonomously navigating and returning to origin
-   - Duration: [X] min
+**Node 2:**
 
-### Quantitative Evidence
+**Node 3:**
 
-- **RViz Screenshots:** Path overlays (exploration vs. return); marker positions; final robot location
-- **Terminal Logs:** Status messages, goal timeouts, transform lookups, action results
-- **Metrics Table:** Waypoints recorded, accuracy ±X.XXm, coverage %, detection rate
+- Node3_screen_recording.mkv: A screen recording of RViz and the terminal running at the same time. This shows the LIFO retracing logic in action, including the robot navigating through all 25 recorded waypoints.
 
-### Claims-to-Evidence Mapping
+- Node3_iphone_rosbot3_recording.MOV: A video of the physical ROSbot 3.0 (Underdark) completing the return-to-home task. This confirms that the robot successfully returned to its starting position.
 
-- _"Node 3 recorded 30–50 waypoints"_ → RViz path visualization + terminal output
-- _"Return accuracy <0.15m"_ → RViz distance tool + tf2 transform logs
-- _"Node 2 detected [X] of 5 markers"_ → RViz `/hazards` topic visualization + video observation
-- _"Watchdog prevents deadlock"_ → Terminal log entries: "Watchdog: Waypoint stalled..."
-- _"Fully autonomous completion"_ → Video showing zero manual intervention during return phase
-
----
-
-### Package Dependencies Summary
-
-- **Core:** rclpy, nav2_msgs, nav_msgs, geometry_msgs, std_msgs, action_msgs
-- **Sensing:** tf2_ros, sensor_msgs (LaserScan, Image, CameraInfo, Range)
-- **Vision:** find_object_2d, cv2 (OpenCV)
-- **Notes:** All dependencies are standard ROS2 packages; no custom message types required
+- Node3_path_misalignment.png: A RViz screenshot showing the difference between the exploration path and the return path. This image supports the analysis in Section 3 and highlights that while the robot followed the correct waypoints, the actual path taken during return was different which was likely due to the slam drift.
 
 ---
 
@@ -198,41 +177,12 @@ During development, a key limitation was limited access to ROSbot 3.0s, as multi
 
 ### References
 
-1. ROS2 Documentation: TF2 Transforms — https://docs.ros.org/en/humble/Concepts/Intermediate/About-Transforms.html
-2. Nav2 Stack: NavigateToPose Action — https://docs.ros2.org/latest/api/nav2_msgs/
-3. find_object_2d ROS Package — https://wiki.ros.org/find_object_2d
-4. RMIT AIIL Course Materials: ROS2 Basics in 5 Days (TheConstruct)
+1. ROS2 Documentation: TF2 Transforms: https://docs.ros.org/en/humble/Concepts/Intermediate/About-Transforms.html
+2. Nav2 Stack: NavigateToPose Action: https://docs.ros2.org/latest/api/nav2_msgs/
+3. RMIT AIIL Course Materials: ROS2 Basics in 5 Days.
+4. The AIIL wiki.
 
 ### AI Tool Usage Summary
 
-**ChatGPT (OpenAI) — Engineering Co-Pilot Role (Estimated 15% of total code)**
-
-AI assistance was used strategically for:
-
-1. **ROS2 Boilerplate:** ActionClient async callback patterns; publisher/subscriber templates (5%)
-2. **Debugging Support:** TF2 frame transformation errors; RMW deserialization issues (3%)
-3. **Algorithm Pseudocode:** Watchdog timer logic; LIFO breadcrumb reversal (5%)
-4. **Professional Communication:** Report structure and technical writing (2%)
-
-**Summary:** Core algorithmic logic (breadcrumb recording, path retracing, marker localization, navigation strategies) developed independently. AI used primarily for standard ROS2 patterns and error recovery code to accelerate development.
-
----
-
-## 7. Conclusion
-
-This evaluation report demonstrates a **complete, autonomous ROS2 system** for the Search & Navigation Challenge. The three nodes successfully integrate to:
-
-- **Explore** unknown environments autonomously (Node 1)
-- **Detect & localize** hazard markers in map coordinates (Node 2)
-- **Track** exploration path and **autonomously retrace** to origin (Node 3)
-
-**Demonstrated Achievement:** Node 3 achieved **0.06–0.15m return accuracy** in post-demo testing (April 26), with video evidence of successful autonomous return-to-home. Nodes 1 & 2 contributed [X]% to challenge completion during demonstration.
-
-**Robustness:** Watchdog timers, TF2-based frame transforms, and status publishing ensure reliable operation across diverse environments. Limitations documented honestly; mitigations implemented where feasible.
-
----
-
-**Submitted:** April 26, 2026  
-**Video Evidence:** MS Teams → [Channel/Folder]  
-**Code Repository:** [GitHub/Bitbucket Link]  
-**Group Members:** [Names]
+**Node 2:**
+**Node 3:** Added a .txt file with the AI logs.
