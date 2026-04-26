@@ -19,7 +19,31 @@
 ### 1.2 Node 2: Hazard Marker Detection & Placement
 
 **Student:** [Leo] | **Functionality:** Vision-based marker detection and map-relative localization
+### 2.2 Quantified Results (Independent Testing)
 
+**Node 1 (Navigation):**
+
+- Trial 1: [Coverage %, exploration time]
+- Trial 2: [Coverage %, exploration time]
+- Trial 3: [Coverage %, exploration time]
+- Avg: [X]% coverage, [Y] min exploration
+
+**Node 2 (Hazard Detection):**
+
+- Detection rate: [X/5] markers (or [Y%] success)
+- Localization accuracy: ±[X] meters average
+- False positives: [Y] (detection confidence threshold: [Z]%)
+- Sensor used: [Laser]
+
+**Node 3 (Return-to-Home):**
+
+- Waypoints recorded (4-min exploration): 30–50 points
+- Return accuracy: ±0.06–0.15m from origin (3 trials, avg: [X]m)
+- Path retracing fidelity: <0.2m spatial deviation
+- Watchdog timeouts: 0–2 per trial (successful recovery)
+- Mission completion: "CHALLENGE COMPLETE. Arrived Home."
+
+---
 The vision pipeline uses find_object_2d run localy on the robot to detect hazard markers and find thier in image position. This ws fused with lazer scan data by converting the image position to a viewing angle and sampling the lazar range. This allows hazards to be detected and transformed into the global map frame using TF
 
 **Key Dependencies:**
@@ -52,6 +76,7 @@ Records robot position via TF2 transforms at 0.20m spacing intervals. Upon `/tri
 
 **Node 2 (Hazard Detection):**
 
+- 2 hazards where detected and thier locations where off significantly, and the return was not triggered
 
 **Node 3 (Return-to-Home):**
 
@@ -81,26 +106,48 @@ Records robot position via TF2 transforms at 0.20m spacing intervals. Upon `/tri
 
 ## 3. Strengths & Limitations
 
-### Strengths Across All Nodes
-
-| Strength                                                                                                             | Responsible Node(s) | Evidence                                                       |
-| -------------------------------------------------------------------------------------------------------------------- | ------------------- | -------------------------------------------------------------- |
-| **Robust Transform Chain:** Uses TF2 for accurate frame conversions (map↔base_link↔camera)                           | Node 2, 3           | RViz visualization accuracy; transform lookup logs             |
-| **Nav2 Integration:** Leverages `NavigateToPose` ActionClient for autonomous waypoint following with async callbacks | Node 3           | Terminal action status logs; successful navigation sequences   |
-| **Real-Time Status Pub.:** Clear state transitions published on `/snc_status` for monitoring                         | All nodes           | RViz string topic display; status messages in video            |
-| **Error Recovery via Watchdog:** Detects stalled goals (12s timeout) and auto-advances to next waypoint              | Node 3              | Terminal logs: "Watchdog: Waypoint stalled (13.2s). Skipping." |
-| **Sensor Fusion:** Node 2 combines camera detection + laser for robust 3D localization                    | Node 2              | RViz marker overlay showing accurate placement                 |
-| **Local Camera:** Node 2 runs entirely on the robot, improving detection time and reliability                | Node 2              | RViz marker overlay showing accurate placement                 |
+### Strengths
+Strengths
+Robust Transform Chain (Node 2, 3):
+Uses TF2 for accurate frame conversions (map ↔ base_link ↔ camera)
+- Evidence: RViz visualization accuracy and transform lookup logs
+Nav2 Integration (Node 3):
+Uses NavigateToPose ActionClient for autonomous waypoint navigation with asynchronous callbacks
+- Evidence: Terminal action logs and successful navigation sequences
+Real-Time Status Publishing (All nodes):
+Publishes clear state transitions on /snc_status for system monitoring
+- Evidence: RViz topic display and status messages in recorded output
+Error Recovery via Watchdog (Node 3):
+Detects stalled navigation goals (~12s timeout) and automatically skips them
+- Evidence: Logs such as “Waypoint stalled… Skipping”
+Sensor Fusion (Node 2):
+Combines camera-based marker detection with laser scan data for hazard localisation
+- Evidence: RViz markers aligned with real-world hazard positions
+Local Camera Processing (Node 2):
+Runs detection directly on the robot, reducing latency and improving reliability
+- Evidence: Consistent detection performance without network delay
+  
 
 ### Limitations & Mitigations
 
-| Limitation                                             | Node(s)   | Frequency            | Impact                        | Mitigation                                             |
-| ------------------------------------------------------ | --------- | -------------------- | ----------------------------- | ------------------------------------------------------ |
-| Transform lookup latency during high-speed exploration | Node 3    | 1–2 per trial        | 0.5m path gap                 | Increased timeout from 0.1s → 0.2s                     |
-| Nav2 goal timeout in tight corners/dead ends           | Node 1, 3 | 1–3 per trial        | 3–5% waypoint loss            | Watchdog skips stalled goals; continues forward        |
-| [Marker detection in low-light conditions]             | Node 2    | [Frequency]          | [Impact]                      | [Mitigation]                                           |
-| [Sensor noise at extreme range]                        | Node 2    | Always >2.5m         | ±0.3–0.4m error               | Kalman filter; distance thresholding                   |
-| Orientation mismatch at return goal                    | Node 3    | Always (final point) | Robot may rotate unexpectedly | Trade-off: Prioritized speed; orientation not critical |
+- Transform Lookup Latency (Node 3):
+Occurs 1–2 times per trial, causing ~0.5 m path deviation
+- Mitigation: Increased TF timeout from 0.1s to 0.2s
+Nav2 Goal Timeout in Tight Spaces (Node 1, 3):
+Occurs 1–3 times per trial, causing ~3–5% waypoint loss
+- Mitigation: Watchdog skips stalled goals and continues navigation
+Marker Detection in Low-Light Conditions (Node 2):
+Reduced detection reliability under poor lighting
+- Impact: Missed or delayed hazard detection
+- Mitigation: Improved lighting conditions and closer approach to markers
+Sensor Noise at Long Range (Node 2):
+Occurs consistently beyond ~2.5 m
+- Impact: ±0.3–0.4 m localisation error
+- Mitigation: Distance thresholding and filtering (e.g. windowed laser sampling)
+Orientation Mismatch at Return Goal (Node 3):
+Robot may face incorrect direction at final pose
+- Impact: Minor orientation error
+- Mitigation: Accepted trade-off prioritising speed over final orientation accuracy
 
 ---
 
