@@ -58,7 +58,7 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 
 **Node 2 (Hazard Detection):**
 
-- Demo: 2 hazards where detected and thier locations where off significantly, and the return was not triggered
+- Demo: 2 hazards where detected and thier locations where off significantly, one marker was incorrectly identified and the return was not triggered
 
 **Node 3 (Return-to-Home):**
 
@@ -70,6 +70,10 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 
 **Node 2:**
 
+- key metric: The system was able to detect and correctly identify all 5 markers placed, then send the return home signal. The location of the markers was innacurate, and they moved with the robot as they moved in rvis. I am unsure of the cause of this issue as the hazards where correctly published to the map topic as shown in the hazard topic logs in the evidence
+
+- Video evidence: shows the robot navigating through the maze using teleop, identifying the start and 5 hazard markers, then sending the return home signal. The logs of the start, return home and hazard topics where also recorded, as well as rvis
+
 **Node 3:**
 
 - Key Metric: The system consistently returned the robot to its starting position with an average positional error between 0.06 m and 0.15 m this was measured using TF2 transforms and RViz visualisation tools.
@@ -80,7 +84,7 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 
 **Node 2 (Hazard Detection):**
 
--
+- Placement error: ~1m, markers follow bots movements
 
 **Node 3 (Return-to-Home):**
 
@@ -106,55 +110,68 @@ To maintain the responsiveness, the node uses asynchronous callbacks which allow
 **Node 3:**
 
 - Consistent Return-to-Home Accuracy: The robot was able to return to its starting position within ±0.06–0.15 m across multiple trials.
+
 - Reliable Path Tracking: The system successfully recorded and published the exploration path and used it for return navigation.
 
 - Sequential Waypoints (LIFO): The robot retraced its path using a Last-In-First-Out structure, So it only explored the known safe path.
 
 - Failure Handling (Watchdog Timer): Stalled navigation goals were detected and skipped, allowing the robot to continue instead of getting stuck.
 
-**Evidence:** RViz visualisation, TF2-based distance measurement, terminal logs, video recording of the robot, and screen recording of the terminal and RViz.
+- Clear System Feedback: Status updates such as “Exploration Active” and “Returning Home” were consistently published.
+
+**Evidence:** Rviz visautionsation, TF2 based distance measurement, terminal logs, video recording of the robot, screen recording of the terminal and rviz.
 
 ### Limitations & Mitigations
 
 **Node 2:**
 
-- Approximate Angle Estimation: The pixel-to-angle conversion assumes a fixed camera field of view, which may not be perfectly accurate.
-  - Impact: Left/right errors in hazard positioning, leading to noticeable map misalignment.
-  - Mitigation: Tune the field of view parameter experimentally and apply proper camera calibration.
+- Approximate Angle Estimation: The pixel-to-angle conversion assumes a fixed camera field of view, which may not be perfectly accurate. This is likely one of the causes of inaccurate marker placement.
+  - Impact: Left/right errors in hazard positioning, leading to noticeable map misalignment
+  - Mitigation: Tune the field of view parameter experimentally, apply proper camera calibration to improve angle accuracy
 
-- Camera-Laser Misalignment: The camera and lidar are mounted in slightly different positions on the robot.
-  - Impact: Small positional offsets between detected hazards and their true location.
-  - Possible Causes: Physical separation between camera and laser sensors, lack of precise calibration between sensors.
-  - Mitigation: Apply a fixed offset correction between camera and lidar frames and use calibrated sensor transforms for improved alignment.
+- Camera–Laser Misalignment: The camera and lidar are mounted in slightly different positions on the robot.
+  - Impact: Small positional offsets between detected hazards and their true location
+  - Possible Causes: Physical separation between camera and laser sensors, Lack of precise calibration between sensors
+  - Mitigation: Apply a fixed offset correction between camera and lidar frames, use calibrated sensor transforms for improved alignment
 
-- Reduced Accuracy at Long Distances: Laser readings become less reliable at greater distances.
-  - Impact: Increased localisation error, approximately ±0.3–0.5 m, for distant hazards.
-  - Possible Causes: Sensor noise increases with range, lower resolution of laser scan at distance, and wider spread of laser beams over longer distances.
-  - Mitigation: Ignore detections beyond a distance threshold, average or filter nearby laser readings, and prioritise closer detections for more accurate placement.
+- Reduced Accuracy at Long Distances: Laser readings become less reliable at greater distances. This also likely decreased placement accuracy.
+  - Impact: Increased localisation error (approximately ±0.3–0.5 m) for distant hazards
+  - Possible Causes: Sensor noise increases with range, lower resolution of laser scan at distance, wider spread of laser beams over longer distances
+  - Mitigation: Ignore detections beyond a distance threshold, use averaging or filtering of nearby laser readings, prioritise closer detections for more accurate placement
 
 - No Depth from Vision Alone: Distance is taken entirely from the laser scan rather than the camera.
-  - Impact: Hazards cannot be localised if laser data is missing or incorrect.
-  - Mitigation: Add validation checks for laser readings and use multiple laser samples instead of a single point.
+  -  Impact: Hazards cannot be localised if laser data is missing or incorrect
+   - Mitigation: Add validation checks for laser readings, use multiple laser samples instead of a single point
 
 - No Camera Calibration: The system uses assumed camera parameters instead of calibrated values.
-  - Impact: Reduced overall accuracy in hazard localisation.
-  - Mitigation: Perform camera calibration to obtain accurate intrinsic parameters and apply distortion correction before processing detections.
+  - Impact: Reduced overall accuracy in hazard localisation
+  - Mitigation: Perform camera calibration to obtain accurate intrinsic parameters, apply distortion correction before processing detections
 
 - Processing Pauses During Detection: The robot briefly stops while processing hazards.
-  - Impact: Slower exploration and increased total task time.
-  - Mitigation: Minimise pause duration during processing, allow detection to continue during movement where possible, and optimise the processing pipeline to reduce delay.
+  - Impact: Slower exploration and increased total task time
+  - Mitigation: Minimise pause duration during processing, allow detection to continue during movement where possible, optimise processing pipeline to reduce delay
+
+- Hazards following robot on rvis
+  - Impact: Node placements are less accurate
+  - Potential Causes: Incorrect odom frame used, potentially issues with RVIS
 
 **Node 3:**
 
-- Path misalignment b/w exploration and return: The return path does not perfectly overlap with the exploration path, added in the evidence folder (green & purple lines. Green being \path_explore and purple being \path_return). - Possible Causes:
-  - TF2 transform timing delays
-  - Slam drift during movement: During exploration, slam_toolbox updated the map as new features were discovered this made it jump the coordinate origin. Since breadcrumbs are saved as fixed coordinates, they appeared out of bounds after the map shift).
-  - Evidence: Added as a separate screenshot in evidence labelled "path misalignment".
-- Final orientation not controlled: The robot returns to the correct position but may not match the original orientation.
-
-### General Limitations
-
-During development, a key limitation was limited access to ROSbot 3.0s, as multiple teams were sharing a small number of units. This meant our team had a period of about a week without direct access to them, which slowed down real-world testing. To work around this, most development and testing was done using simulation and the ROSbot 2.0s and this introduced a real gap. The behaviour in simulation did not always match the physical robot.
+- Path Misalignment Between Exploration and Return: The return path does not perfectly overlap with the exploration path, as seen in RViz (green vs purple lines).
+  - Impact: Small deviations from original path (<0.2–0.5 m)
+  - Possible Causes:
+    - TF2 transform timing delays
+    - Odometry drift during movement
+    - Nav2 local planner smoothing or re-adjusting trajectories
+  - Evidence: RViz screenshot showing non-overlapping paths
+- Waypoint Skipping Due to Navigation Failures: Some waypoints were skipped due to timeouts (watchdog activation).
+  - Impact: Slight loss in path accuracy
+  - Evidence: Terminal logs showing "Retracing Crumb X/Y" with occasional skips
+- Dependence on Localization Accuracy: The system relies heavily on TF2 and odometry data.
+  - Impact: Small positional errors accumulate over time
+  - Mitigation: Use of tolerance threshold (0.15 m)
+- Final Orientation Not Controlled: The robot returns to the correct position but may not match the original orientation.
+  - Impact: Minor, does not affect task completion
 
 ---
 
@@ -168,6 +185,7 @@ During development, a key limitation was limited access to ROSbot 3.0s, as multi
 2. **Physical Robot Hardware Video:** [Filename]
    - Shows: Robot autonomously navigating and returning to origin
    - Duration: [X] min
+
 
 ### Quantitative Evidence
 
