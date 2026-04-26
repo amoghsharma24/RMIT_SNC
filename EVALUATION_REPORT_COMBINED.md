@@ -8,7 +8,7 @@
 
 ### 1.1 Node 1: Navigation Logic
 
-- [idk what to write here yet]
+**Student:** student assigned to node 1 stopped collaborating early in the project, and no implementation of node 1 was attempted
 
 ### 1.2 Node 2: Hazard Marker Detection & Placement
 
